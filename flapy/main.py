@@ -3,6 +3,7 @@ from abc import ABC
 from abc import abstractmethod
 from abc import abstractproperty
 from itertools import cycle
+import math
 import os
 import pygame
 import sys
@@ -23,6 +24,11 @@ GAME_DATA = {
             'id': 1,
             'type': 'rock',
             'position': (1910, 241),
+        },
+        {
+            'id': 2,
+            'type': 'rock',
+            'position': (2200, 300),
         }
     ]
 }
@@ -46,6 +52,15 @@ def load_image(filename):
         raise ResourceError(err)
 
 
+def check_circle_collision(c0, c1):
+    dx = c1[0] - c0[0]
+    dy = c1[1] - c0[1]
+    dist = math.sqrt(dx * dx + dy * dy)
+    if dist < c0[2] + c1[2]:
+        return True
+    return False
+
+
 class Entity(ABC):
 
     @abstractproperty
@@ -64,6 +79,11 @@ class Entity(ABC):
     def y(self, y):
         """Set object position Y coordinate."""
 
+    @abstractproperty
+    def collision_circles(self):
+        """Collision circles associated with the entity as a list of (x, y,
+        radius) tuples."""
+
     @abstractmethod
     def update(self, dt):
         """Updates the entity."""
@@ -78,6 +98,18 @@ class Rock(Entity):
     def __init__(self, position):
         self.image = load_image(resource_filename('/rockGrass.png'))
         self._x, self._y = position
+        self._collision_circles = [
+            (65, 21, 21),
+            (65, 45, 16),
+            (65, 75, 18),
+            (61, 108, 28),
+            (58, 172, 51),
+            (55, 232, 54),
+        ]
+
+    @property
+    def collision_circles(self):
+        return self._collision_circles
 
     @property
     def x(self):
@@ -120,9 +152,11 @@ class Background:
         surface.blit(self.image, (self.x + self.width, 0))
 
 
-class Plane(pygame.sprite.Sprite):
+class Player(pygame.sprite.Sprite):
 
     animation_duration = 50
+
+    collision_circle = (44, 36, 44)
 
     def __init__(self):
         super().__init__()
@@ -180,8 +214,8 @@ class Game:
         self.background = Background(data['scroll_speed'])
         self.objects = pygame.sprite.Group()
 
-        self.plane = Plane()
-        self.objects.add(self.plane)
+        self.player = Player()
+        self.objects.add(self.player)
 
     def spawn_entities(self):
         for spec in self.data['entities']:
@@ -194,7 +228,9 @@ class Game:
                     x -= self.distance
                     entity = Rock((x, y))
                     self.entities[spec['id']] = entity
-                    print('Added {} entity with id {}'.format(spec['type'], spec['id']))
+                    print('Added {} entity with id {}'.format(
+                        spec['type'],
+                        spec['id']))
 
     def update_entities(self, dt):
         for entity in self.entities.values():
@@ -211,6 +247,23 @@ class Game:
             self.entities.pop(eid)
             print('Removed entity {}'.format(eid))
 
+    def check_collision(self):
+        x0, y0, r0 = self.player.collision_circle
+        x0 += self.player.x
+        y0 += self.player.y
+        c0 = (x0, y0, r0)
+
+        for eid, entity in self.entities.items():
+            for (x1, y1, r1) in entity.collision_circles:
+                x1 += entity.x
+                y1 += entity.y
+                c1 = (x1, y1, r1)
+
+                if check_circle_collision(c0, c1):
+                    print('Collided with entity {}'.format(eid))
+                    return True
+        return False
+
     def update(self, dt):
         # update global distance counter
         self.distance += dt * self.data['scroll_speed']
@@ -218,6 +271,9 @@ class Game:
         self.spawn_entities()
         self.update_entities(dt)
         self.prune_entities()
+
+        if self.check_collision():
+            exit(1)
 
         self.background.update(dt)
         self.objects.update(dt)
