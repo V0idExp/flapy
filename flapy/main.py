@@ -164,6 +164,8 @@ class Player(Entity):
         self.time_acc = 0
         self.frame_time = (self.animation_duration / len(self.images)) / 1000.0
 
+        self.vertical_velocity = 0
+
     @property
     def colliders(self):
         return [(44, 36, 44)]
@@ -192,9 +194,13 @@ class Player(Entity):
         self.rect.left = self.x
         self.rect.top = self.y
 
+    def boost_up(self):
+        self.vertical_velocity -= 50
+
     def update(self, dt):
         self.time_acc += dt
-        self.y += dt * 50
+        self.vertical_velocity += 9.81 * dt * 10
+        self.y += self.vertical_velocity * dt
         while self.time_acc >= self.frame_time:
             self.time_acc -= self.frame_time
             self.set_frame(next(self.indices))
@@ -280,6 +286,10 @@ class Game:
         for entity in self.entities.values():
             entity.draw(screen)
 
+    def handle_keypress(self, keyname):
+        if keyname == 'space':
+            self.player.boost_up()
+
 
 if __name__ == '__main__':
     pygame.init()
@@ -295,6 +305,8 @@ if __name__ == '__main__':
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
+            elif event.type == pygame.KEYDOWN:
+                game.handle_keypress(pygame.key.name(event.key))
 
         # compute time delta
         now = pygame.time.get_ticks()
