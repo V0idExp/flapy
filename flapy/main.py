@@ -88,7 +88,7 @@ class Entity(ABC):
         self._y = y
 
     @abstractproperty
-    def collision_circles(self):
+    def colliders(self):
         """Collision circles associated with the entity as a list of (x, y,
         radius) tuples."""
 
@@ -109,7 +109,7 @@ class Rock(Entity):
         self.x, self.y = position
 
     @property
-    def collision_circles(self):
+    def colliders(self):
         return [
             (65, 21, 21),
             (65, 45, 16),
@@ -128,7 +128,7 @@ class Rock(Entity):
 
 class Background(Entity):
 
-    collision_circles = []
+    colliders = []
 
     def __init__(self, scroll_speed):
         super().__init__()
@@ -165,7 +165,7 @@ class Player(Entity):
         self.frame_time = (self.animation_duration / len(self.images)) / 1000.0
 
     @property
-    def collision_circles(self):
+    def colliders(self):
         return [(44, 36, 44)]
 
     @property
@@ -244,13 +244,13 @@ class Game:
             print('Removed entity {}'.format(eid))
 
     def check_collision(self):
-        x0, y0, r0 = self.player.collision_circles[0]
+        x0, y0, r0 = self.player.colliders[0]
         x0 += self.player.x
         y0 += self.player.y
         c0 = (x0, y0, r0)
 
         for eid, entity in self.entities.items():
-            for (x1, y1, r1) in entity.collision_circles:
+            for (x1, y1, r1) in entity.colliders:
                 x1 += entity.x
                 y1 += entity.y
                 c1 = (x1, y1, r1)
