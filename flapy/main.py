@@ -63,21 +63,29 @@ def check_circle_collision(c0, c1):
 
 class Entity(ABC):
 
-    @abstractproperty
+    def __init__(self):
+        self._x = 0
+        self._y = 0
+
+    @property
     def x(self):
         """Object position X coordinate."""
+        return self._x
 
     @x.setter
     def x(self, x):
         """Set object position X coordinate."""
+        self._x = x
 
-    @abstractproperty
+    @property
     def y(self):
         """Object position Y coordinate."""
+        return self._y
 
     @y.setter
     def y(self, y):
         """Set object position Y coordinate."""
+        self._y = y
 
     @abstractproperty
     def collision_circles(self):
@@ -96,9 +104,13 @@ class Entity(ABC):
 class Rock(Entity):
 
     def __init__(self, position):
+        super().__init__()
         self.image = load_image(resource_filename('/rockGrass.png'))
-        self._x, self._y = position
-        self._collision_circles = [
+        self.x, self.y = position
+
+    @property
+    def collision_circles(self):
+        return [
             (65, 21, 21),
             (65, 45, 16),
             (65, 75, 18),
@@ -107,26 +119,6 @@ class Rock(Entity):
             (55, 232, 54),
         ]
 
-    @property
-    def collision_circles(self):
-        return self._collision_circles
-
-    @property
-    def x(self):
-        return self._x
-
-    @x.setter
-    def x(self, x):
-        self._x = x
-
-    @property
-    def y(self):
-        return self._y
-
-    @y.setter
-    def y(self, y):
-        self._y = y
-
     def draw(self, surface):
         surface.blit(self.image, (self._x, self._y))
 
@@ -134,9 +126,12 @@ class Rock(Entity):
         pass
 
 
-class Background:
+class Background(Entity):
+
+    collision_circles = []
 
     def __init__(self, scroll_speed):
+        super().__init__()
         self.image = load_image(resource_filename('/background.png'))
         self.width = self.image.get_rect().width
         self.scroll_speed = scroll_speed
@@ -152,17 +147,12 @@ class Background:
         surface.blit(self.image, (self.x + self.width, 0))
 
 
-class Player(pygame.sprite.Sprite):
+class Player(Entity):
 
     animation_duration = 50
 
-    collision_circle = (44, 36, 44)
-
     def __init__(self):
         super().__init__()
-
-        self._x = 0
-        self._y = 0
 
         self.indices = cycle(range(3))
         self.images = [
@@ -175,20 +165,26 @@ class Player(pygame.sprite.Sprite):
         self.frame_time = (self.animation_duration / len(self.images)) / 1000.0
 
     @property
+    def collision_circles(self):
+        return [(44, 36, 44)]
+
+    @property
     def x(self):
-        return self._x
+        return super().x
 
     @x.setter
     def x(self, x):
-        self.rect.left = self._x = x
+        Entity.x.fset(self, x)
+        self.rect.left = x
 
     @property
     def y(self):
-        return self._y
+        return super().y
 
     @y.setter
     def y(self, y):
-        self.rect.top = self._y = y
+        Entity.y.fset(self, y)
+        self.rect.top = y
 
     def set_frame(self, index):
         self.image = self.images[index]
@@ -203,6 +199,9 @@ class Player(pygame.sprite.Sprite):
             self.time_acc -= self.frame_time
             self.set_frame(next(self.indices))
 
+    def draw(self, surface):
+        surface.blit(self.image, self.rect)
+
 
 class Game:
 
@@ -212,10 +211,7 @@ class Game:
         self.data = data
         self.entities = {}
         self.background = Background(data['scroll_speed'])
-        self.objects = pygame.sprite.Group()
-
         self.player = Player()
-        self.objects.add(self.player)
 
     def spawn_entities(self):
         for spec in self.data['entities']:
@@ -248,7 +244,7 @@ class Game:
             print('Removed entity {}'.format(eid))
 
     def check_collision(self):
-        x0, y0, r0 = self.player.collision_circle
+        x0, y0, r0 = self.player.collision_circles[0]
         x0 += self.player.x
         y0 += self.player.y
         c0 = (x0, y0, r0)
@@ -276,11 +272,11 @@ class Game:
             exit(1)
 
         self.background.update(dt)
-        self.objects.update(dt)
+        self.player.update(dt)
 
     def draw(self, screen):
         self.background.draw(screen)
-        self.objects.draw(screen)
+        self.player.draw(screen)
         for entity in self.entities.values():
             entity.draw(screen)
 
