@@ -2,6 +2,8 @@
 from abc import ABC
 from abc import abstractmethod
 from abc import abstractproperty
+from enum import Enum
+from enum import unique
 from itertools import cycle
 import math
 import os
@@ -10,28 +12,6 @@ import sys
 
 # Screen size in pixels.
 SCREEN_SIZE = 800, 480
-
-# Game data.
-GAME_DATA = {
-    'scroll_speed': 200,
-    'entities': [
-        {
-            'id': 0,
-            'type': 'rock',
-            'position': (400, 241),
-        },
-        {
-            'id': 1,
-            'type': 'rock',
-            'position': (1910, 241),
-        },
-        {
-            'id': 2,
-            'type': 'rock',
-            'position': (2200, 300),
-        }
-    ]
-}
 
 
 class ResourceError(FileNotFoundError):
@@ -101,23 +81,44 @@ class Entity(ABC):
         """Draws the entity on given surface."""
 
 
-class Rock(Entity):
+class Obstacle(Entity):
 
-    def __init__(self, position):
+    @unique
+    class Type(Enum):
+        rock = 'rock'
+        ice = 'ice'
+
+    def __init__(self, obstacle_type, position):
         super().__init__()
-        self.image = load_image(resource_filename('/rockGrass.png'))
+        filename = {
+            Obstacle.Type.rock: '/rockGrass.png',
+            Obstacle.Type.ice: '/rockIceDown.png',
+        }[obstacle_type]
+        self.type = obstacle_type
+        self.image = load_image(resource_filename(filename))
         self.x, self.y = position
+        self._colliders = {
+            Obstacle.Type.rock: [
+                (65, 21, 21),
+                (65, 45, 16),
+                (65, 75, 18),
+                (61, 108, 28),
+                (58, 172, 51),
+                (55, 232, 54),
+            ],
+            Obstacle.Type.ice: [
+                (65, 21, 54),
+                (65, 45, 51),
+                (65, 75, 28),
+                (61, 108, 18),
+                (58, 172, 16),
+                (55, 232, 21),
+            ]
+        }
 
     @property
     def colliders(self):
-        return [
-            (65, 21, 21),
-            (65, 45, 16),
-            (65, 75, 18),
-            (61, 108, 28),
-            (58, 172, 51),
-            (55, 232, 54),
-        ]
+        return self._colliders[self.type]
 
     def draw(self, surface):
         surface.blit(self.image, (self._x, self._y))
@@ -226,12 +227,12 @@ class Game:
 
             x, y = spec['position']
             if x > self.distance and x < self.distance + self.width * 2:
-                if spec['type'] == 'rock':
+                if spec['type'] in {Obstacle.Type.rock, Obstacle.Type.ice}:
                     x -= self.distance
-                    entity = Rock((x, y))
+                    entity = Obstacle(spec['type'], (x, y))
                     self.entities[spec['id']] = entity
                     print('Added {} entity with id {}'.format(
-                        spec['type'],
+                        spec['type'].value,
                         spec['id']))
 
     def update_entities(self, dt):
@@ -289,6 +290,34 @@ class Game:
     def handle_keypress(self, keyname):
         if keyname == 'space':
             self.player.boost_up()
+
+
+# Game data.
+GAME_DATA = {
+    'scroll_speed': 200,
+    'entities': [
+        {
+            'id': 0,
+            'type': Obstacle.Type.rock,
+            'position': (400, 241),
+        },
+        {
+            'id': 3,
+            'type': Obstacle.Type.ice,
+            'position': (700, 0),
+        },
+        {
+            'id': 1,
+            'type': Obstacle.Type.rock,
+            'position': (1910, 241),
+        },
+        {
+            'id': 2,
+            'type': Obstacle.Type.rock,
+            'position': (2200, 300),
+        }
+    ]
+}
 
 
 if __name__ == '__main__':
