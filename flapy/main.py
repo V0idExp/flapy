@@ -5,6 +5,7 @@ from abc import abstractproperty
 from enum import Enum
 from enum import unique
 from itertools import cycle
+from itertools import zip_longest
 import math
 import os
 import pygame
@@ -97,28 +98,37 @@ class Obstacle(Entity):
         self.type = obstacle_type
         self.image = load_image(resource_filename(filename))
         self.x, self.y = position
-        self._colliders = {
-            Obstacle.Type.rock: [
-                (65, 21, 21),
-                (65, 45, 16),
-                (65, 75, 18),
-                (61, 108, 28),
-                (58, 172, 51),
-                (55, 232, 54),
-            ],
-            Obstacle.Type.ice: [
-                (65, 21, 54),
-                (65, 45, 51),
-                (65, 75, 28),
-                (61, 108, 18),
-                (58, 172, 16),
-                (55, 232, 21),
-            ]
-        }
+        self._colliders = []
+
+        width, height = self.image.get_size()
+        alpha_values = pygame.surfarray.pixels_alpha(self.image)
+        segments = []
+        for x, column in enumerate(alpha_values):
+            for y, alpha in enumerate(column):
+                if len(segments) != height:
+                    segments.append([None, None])
+
+                if alpha != 0:
+                    if segments[y][0] is None:
+                        segments[y][0] = x
+                    segments[y][1] = x
+
+        v_offset = 0
+        chunks = [iter(segments)] * int(height / 10)
+        for c, chunk in enumerate(zip_longest(*chunks)):
+            chunk = list(filter(lambda x: x is not None, chunk))
+            min_x = min(segment[0] for segment in chunk)
+            max_x = max(segment[1] for segment in chunk)
+            x = sum([(x0 + x1) / 2 for x0, x1 in chunk]) / len(chunk)
+            chunk_height = len(chunk) / len(segments) * height
+            y = v_offset + chunk_height
+            v_offset += chunk_height
+            r = (max_x - min_x) / 2
+            self._colliders.append((x, y, r))
 
     @property
     def colliders(self):
-        return self._colliders[self.type]
+        return self._colliders
 
     def draw(self, surface):
         surface.blit(self.image, (self._x, self._y))
@@ -294,7 +304,7 @@ class Game:
 
 # Game data.
 GAME_DATA = {
-    'scroll_speed': 200,
+    'scroll_speed': 100,
     'entities': [
         {
             'id': 0,
