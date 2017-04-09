@@ -103,7 +103,7 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode(SCREEN_SIZE)
     pygame.display.set_caption('FlaPy')
 
-    # fill background
+    # create background
     background = Background(SCROLL_SPEED)
 
     # create plane
@@ -116,14 +116,17 @@ if __name__ == '__main__':
 
     last_update = pygame.time.get_ticks()
     while True:
+        # handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
 
+        # compute time delta
         now = pygame.time.get_ticks()
         dt = (now - last_update) / 1000.0
         last_update = now
 
+        # update entities
         sprites.update(dt)
         background.update(dt)
 
