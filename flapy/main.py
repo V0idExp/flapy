@@ -15,25 +15,17 @@ import sys
 SCREEN_SIZE = 800, 480
 
 
-class ResourceError(FileNotFoundError):
-    """Resource loading error."""
-
-
-def resource_filename(relpath):
-    return os.path.join(*['data'] + relpath.split('/'))
-
-
-def load_image(filename):
-    try:
-        image = pygame.image.load(filename)
-        if image.get_alpha() is None:
-            return image.convert()
-        return image.convert_alpha()
-    except pygame.error as err:
-        raise ResourceError(err)
+def load_image(path):
+    """Loads an image resource and returns a surface object for it."""
+    filename = os.path.join(*['data'] + path.split('/'))
+    image = pygame.image.load(filename)
+    if image.get_alpha() is None:
+        return image.convert()
+    return image.convert_alpha()
 
 
 def check_circle_collision(c0, c1):
+    """Checks whether two circles collide."""
     dx = c1[0] - c0[0]
     dy = c1[1] - c0[1]
     dist = math.sqrt(dx * dx + dy * dy)
@@ -70,8 +62,8 @@ class Entity(ABC):
 
     @abstractproperty
     def colliders(self):
-        """Collision circles associated with the entity as a list of (x, y,
-        radius) tuples."""
+        """Collision circles associated with the entity as a list of
+        (x, y, radius) tuples."""
 
     @abstractmethod
     def update(self, dt):
@@ -96,7 +88,7 @@ class Obstacle(Entity):
             Obstacle.Type.ice: '/rockIceDown.png',
         }[obstacle_type]
         self.type = obstacle_type
-        self.image = load_image(resource_filename(filename))
+        self.image = load_image(filename)
         self.x, self.y = position
         self._colliders = []
 
@@ -143,7 +135,7 @@ class Background(Entity):
 
     def __init__(self, scroll_speed):
         super().__init__()
-        self.image = load_image(resource_filename('/background.png'))
+        self.image = load_image('/background.png')
         self.width = self.image.get_rect().width
         self.scroll_speed = scroll_speed
         self.x = 0
@@ -167,7 +159,7 @@ class Player(Entity):
 
         self.indices = cycle(range(3))
         self.images = [
-            load_image(resource_filename('/planeRed{}.png'.format(i)))
+            load_image('/planeRed{}.png'.format(i))
             for i in (1, 2, 3)
         ]
         self.set_frame(0)
